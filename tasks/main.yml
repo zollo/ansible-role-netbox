@@ -1,0 +1,99 @@
+---
+- name: Include OS Specific Tasks
+  include_tasks: present-{{ ansible_os_family }}.yml
+
+- name: Service
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - redis
+    - postgresql
+
+- name: Ensure group exists
+  group:
+    name: "{{ netbox_system_group }}"
+
+- name: Ensure system user exists
+  user:
+    name: "{{ netbox_system_user }}"
+    group: "{{ netbox_system_group }}"
+    system: true
+
+- name: Ensure Pip is Latest
+  pip:
+    name:
+      - pip
+      - setuptools
+      - wheel
+      - psycopg2
+    state: latest
+
+- block:
+    - name: Ensure Netbox Database is Present
+      community.general.postgresql_db:
+        name: "{{ netbox_db }}"
+
+    - name: Ensure Netbox DB User is Present
+      community.general.postgresql_user:
+        db: "{{ netbox_db }}"
+        name: "{{ netbox_db_user }}"
+        password: "{{ netbox_db_pass }}"
+        priv: "ALL"
+  become_user: postgres
+  become: true
+
+- name: Ensure Dir Exists
+  file:
+    state: directory
+    path: "{{ netbox_base_path }}"
+
+- name: Git checkout
+  git:
+    repo: https://github.com/netbox-community/netbox.git
+    dest: "{{ netbox_base_path }}"
+
+- name: Ensure Permissions
+  file:
+    recurse: true
+    path: "{{ netbox_base_path }}/netbox/media"
+    owner: "{{ netbox_system_user }}"
+    group: "{{ netbox_system_group }}"
+
+- name: Copy Configuration
+  template:
+    src: templates/configuration.py.j2
+    dest: "{{ netbox_base_path }}/netbox/netbox/configuration.py"
+
+- name: Copy Configuration
+  template:
+    src: templates/gunicorn.py.j2
+    dest: "{{ netbox_base_path }}/gunicorn.py"
+
+- name: Run Upgrade Script
+  ansible.builtin.shell: sudo ./upgrade.sh
+  args:
+    chdir: /opt/netbox
+
+- name: Copy Systemd Configuration Files
+  copy:
+    remote_src: true
+    src: "{{ netbox_base_path }}/contrib/{{ item }}"
+    dest: /etc/systemd/system/{{ item }}
+  loop:
+    - netbox.service
+    - netbox-rq.service
+
+- name: Force systemd to reread configs
+  systemd:
+    daemon_reload: true
+
+- name: Ensure Netbox Services are Started/Enabled
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - netbox
+    - netbox-rq

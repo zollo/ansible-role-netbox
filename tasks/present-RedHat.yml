@@ -1,0 +1,19 @@
+---
+---
+- name: Ensure Requirements are Present
+  yum:
+    state: present
+    name:
+      - postgresql-server
+      - libpq-devel
+      - redis
+      - gcc
+      - python36
+      - python36-devel
+      - python3-pip
+      - libxml2-devel
+      - libxslt-devel
+      - libffi-devel
+      - openssl-devel
+      - redhat-rpm-config
+      - git

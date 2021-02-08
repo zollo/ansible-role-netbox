@@ -1,0 +1,22 @@
+---
+netbox_base_path: /opt/netbox
+netbox_db: netbox
+netbox_db_host: localhost
+netbox_db_user: netbox
+netbox_db_pass: netbox
+netbox_system_user: netbox
+netbox_system_group: netbox
+netbox_git_src: https://github.com/netbox-community/netbox.git
+netbox_redis:
+  - name: tasks
+    host: localhost
+    port: 6379
+    password: ''
+    database: 0
+    ssl: false
+  - name: caching
+    host: localhost
+    port: 6379
+    password: ''
+    database: 1
+    ssl: false
